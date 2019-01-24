@@ -4,6 +4,20 @@ var budgetController = (function(){
         this.id = id,
         this.description = description,
         this.value = value;
+        this.percentage = -1;
+    };
+
+    Expense.prototype.calcPercentage = function(totalIncome) {
+        if(totalIncome > 0){
+            this.percentage = Math.round((this.value / totalIncome) * 100);
+        }
+        else{
+            this.percentage = -1;
+        }
+    };
+
+    Expense.prototype.getPercentage = function() {
+        return this.percentage;
     };
 
     var Income = function(id, description, value){
@@ -92,6 +106,19 @@ var budgetController = (function(){
             }
         },
 
+        calculatePercentages: function() {
+            data.allItems.exp.forEach(function(curr){
+                curr.calcPercentage(data.totals.inc);
+            });
+        },
+
+        getPercentages: function() {
+            var allPercentages = data.allItems.exp.map(function(curr) {
+                return curr.getPercentage();
+            });
+            return allPercentages;
+        },
+
         getBudget: function() {
             return {
                 budget: data.budget,
@@ -121,7 +148,8 @@ var UIController = (function(){
         incomeLabel: '.budget__income--value',
         expenseLabel: '.budget__expenses--value',
         percentageLabel: '.budget__expenses--percentage',
-        container: '.container'
+        container: '.container',
+        ExpensesPercentagesLabel: '.item__percentage'
     };
 
     //public method
@@ -143,7 +171,7 @@ var UIController = (function(){
                 html =  '<div class="item clearfix" id="inc-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
             }else if(type === 'exp'){
                 element = DOMstrings.expensesContainer;
-                html = '<div class="item clearfix" id="exp-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
+                html = '<div class="item clearfix" id="exp-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__percentage">10%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
             }
 
             //replace placeholder with data
@@ -189,6 +217,26 @@ var UIController = (function(){
             fieldsArray[0].focus();
         },
 
+        //the param is an array
+        displayPercentages: function(percentages) {
+            var fields = document.querySelectorAll(DOMstrings.ExpensesPercentagesLabel);
+
+            var nodeListForEach = function(list, callback){
+                for(var i = 0 ; i < list.length ; i++){
+                    callback(list[i], i);
+                }
+            }
+
+            nodeListForEach(fields, function(current, index){
+                if(percentages[index] > 0){
+                    current.textContent = percentages[index] + '%';
+                } else {
+                    current.textContent = '---';
+                }
+            });
+
+        },
+
         getDOMstrings: function() {
             return DOMstrings;
         }
@@ -220,8 +268,17 @@ var controller = (function(budgetCtrl, UICtrl){
 
         //display the budget in the UI
         UICtrl.displayBudget(budget);
-    }
+    };
 
+    var updatePercentages = function() {
+        //calculate percentages.
+        budgetCtrl.calculatePercentages();
+        var percentages = budgetCtrl.getPercentages();
+        console.log(percentages);
+        //read percentages from the budget.
+        //update the ui.
+        UICtrl.displayPercentages(percentages);
+    };
 
     //this function is call when you press enter or click in the button next to the input fields.
     var ctrlAddItem = function() {
@@ -243,6 +300,9 @@ var controller = (function(budgetCtrl, UICtrl){
 
             //calcualte and update budget
             updateBudget();
+
+            //update percentages.
+            updatePercentages();
         }
 
     };
@@ -264,7 +324,7 @@ var controller = (function(budgetCtrl, UICtrl){
             //update and change the budget value
 
             updateBudget();
-
+            updatePercentages();
         }
     };
 
